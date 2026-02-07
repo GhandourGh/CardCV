@@ -1,15 +1,17 @@
 # Real-time playing card detection using YOLOv8
 #
 # Install dependencies:
-#   pip install ultralytics opencv-python
+#   pip install -r requirements.txt
 #
 
 import cv2
 from ultralytics import YOLO
 
+from config import MODEL_PATH
+
+
 def main():
-    # Load the trained model
-    model = YOLO("playingCards.pt")
+    model = YOLO(MODEL_PATH)
 
     # Open webcam at 30 FPS
     cap = cv2.VideoCapture(0)
