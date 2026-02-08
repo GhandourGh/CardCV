@@ -1,9 +1,3 @@
-# Real-time playing card detection using YOLOv8
-#
-# Install dependencies:
-#   pip install -r requirements.txt
-#
-
 import cv2
 from ultralytics import YOLO
 

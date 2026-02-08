@@ -17,7 +17,6 @@ def load_model():
 
 @st.cache_data
 def load_card_images():
-    """Load all card PNGs as base64 data URIs, keyed by card_id (e.g. 'AH')."""
     images = {}
     for rank_key, rank_name in RANK_TO_FILENAME.items():
         for suit_key, suit_name in SUIT_TO_FILENAME.items():
@@ -35,12 +34,6 @@ CARD_IMAGES = load_card_images()
 
 
 def compute_card_states(current_detections, now):
-    """Return dict of card_id -> (intensity, is_popping).
-
-    current_detections: dict card_id -> confidence (0.0-1.0)
-    Handles fade-out for cards that are no longer detected.
-    is_popping is True during the first POP_DURATION seconds after detection.
-    """
     history = st.session_state.card_history
 
     st.session_state.ever_detected.update(current_detections.keys())

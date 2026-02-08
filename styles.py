@@ -5,12 +5,12 @@ CSS_COMMON = """
     40%  { transform: scale(1.08); }
     100% { transform: scale(1.0); }
 }
-.card-grid { display: flex; flex-wrap: wrap; gap: 4px; justify-content: center; margin-bottom: 12px; }
-.suit-title { text-align: center; font-size: 18px; font-weight: bold; margin: 8px 0 4px 0; }
+.card-grid { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-bottom: 6px; }
+.suit-title { text-align: center; font-size: 14px; font-weight: bold; margin: 4px 0 2px 0; }
 .conf-bar {
     position: absolute;
-    bottom: 3px; left: 3px;
-    height: 3px;
+    bottom: 2px; left: 2px;
+    height: 2px;
     border-radius: 1px;
     transition: width 0.2s ease;
     z-index: 2;
@@ -21,28 +21,28 @@ CSS_COMMON = """
 CSS_ICONS = """
 <style>
 .card {
-    width: 42px; height: 56px;
+    width: 34px; height: 46px;
     border: 2px solid #333;
-    border-radius: 6px;
+    border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
-    font-size: 13px; font-weight: bold;
+    font-size: 11px; font-weight: bold;
     background: #1a1a2e;
     color: #555;
     flex-direction: column;
     line-height: 1.1;
     position: relative;
 }
-.card .rank { font-size: 14px; }
-.card .suit { font-size: 12px; }
+.card .rank { font-size: 12px; }
+.card .suit { font-size: 10px; }
 </style>
 """
 
 CSS_IMAGES = """
 <style>
 .card {
-    width: 52px; height: 73px;
+    width: 42px; height: 59px;
     border: 2px solid #333;
-    border-radius: 6px;
+    border-radius: 5px;
     display: flex; align-items: center; justify-content: center;
     background: #1a1a2e;
     position: relative;
@@ -112,35 +112,6 @@ button[kind="primary"]:hover,
     background: hsl(221.2 83.2% 53.3% / 0.9);
     border-color: hsl(221.2 83.2% 53.3%);
 }
-/* Toggle button group styles */
-.toggle-group {
-    display: inline-flex;
-    border-radius: calc(0.5rem - 2px);
-    background: hsl(222.2 84% 4.9%);
-    border: 1px solid hsl(217.2 32.6% 17.5%);
-    padding: 2px;
-    gap: 2px;
-}
-.toggle-item {
-    padding: 0.5rem 1rem;
-    border-radius: calc(0.5rem - 4px);
-    font-size: 0.875rem;
-    font-weight: 500;
-    transition: all 0.2s;
-    cursor: pointer;
-    border: none;
-    background: transparent;
-    color: hsl(217.9 10.6% 64.9%);
-}
-.toggle-item:hover {
-    background: hsl(217.2 32.6% 17.5%);
-    color: hsl(210 40% 98%);
-}
-.toggle-item.active {
-    background: hsl(222.2 47.4% 11.2%);
-    color: hsl(210 40% 98%);
-    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-}
 @keyframes pulse {
     0%, 100% { opacity: 0.4; }
     50% { opacity: 0.8; }
@@ -148,10 +119,6 @@ button[kind="primary"]:hover,
 @keyframes spin {
     0% { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
-}
-@keyframes shimmer {
-    0% { background-position: -1000px 0; }
-    100% { background-position: 1000px 0; }
 }
 .loading-overlay {
     position: absolute;
@@ -187,7 +154,7 @@ button[kind="primary"]:hover,
     border-radius: 8px;
     overflow: hidden;
     width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 16 / 10;
     background: #1a1a2e;
     border: 1px solid #333;
     display: flex;
@@ -202,4 +169,4 @@ button[kind="primary"]:hover,
 </style>
 """
 
-SUIT_DIVIDER = '<hr style="border:none;border-top:1px solid #333;margin:12px 0;">'
+SUIT_DIVIDER = '<hr style="border:none;border-top:1px solid #333;margin:6px 0;">'

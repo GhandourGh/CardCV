@@ -1,17 +1,15 @@
 import streamlit as st
 
-from config import SUITS, RANKS, suit_key_to_name
+from config import SUITS, RANKS, CARD_VALUES, suit_key_to_name
 from detection import CARD_IMAGES
 from styles import CSS_COMMON, CSS_ICONS, CSS_IMAGES
 
 
 def _hex_alpha(a):
-    """Convert 0.0-1.0 alpha to 2-char hex suffix (e.g. 0.5 -> '80')."""
     return format(max(0, min(255, int(a * 255))), "02x")
 
 
 def _intensity_styles(glow_color, intensity):
-    """Build inline CSS for a card at a given glow intensity (0.0-1.0)."""
     r1 = int(6 + 10 * intensity)
     r2 = int(12 + 20 * intensity)
     alpha = round(intensity, 2)
@@ -48,7 +46,6 @@ def _suit_header(suit_key, info):
 
 
 def render_suit_icons(suit_key, card_states):
-    """Render a suit's 13 cards using text symbols."""
     info = SUITS[suit_key]
     html = CSS_COMMON + CSS_ICONS
     extra_keyframes = ""
@@ -101,7 +98,6 @@ def render_suit_icons(suit_key, card_states):
 
 
 def render_suit_images(suit_key, card_states):
-    """Render a suit's 13 cards using PNG images."""
     info = SUITS[suit_key]
     is_red = suit_key in ("H", "D")
     html = CSS_COMMON + CSS_IMAGES
@@ -154,7 +150,6 @@ def render_suit_images(suit_key, card_states):
 
 
 def render_info_panel(side="left"):
-    """Render info panels above the card grids."""
     # Shared styles
     box = "background:#12122a;border-radius:10px;padding:20px;margin-bottom:16px;border:1px solid #252550;"
 
@@ -267,12 +262,6 @@ def render_info_panel(side="left"):
 
 
 def render_progress_bar(card_states=None, is_running=False):
-    """Render progress bar with dynamic status text.
-    
-    Args:
-        card_states: dict of card_id -> (intensity, is_popping) or None
-        is_running: whether detection is currently running
-    """
     count = len(st.session_state.get("ever_detected", set()))
     pct = int(count / 52 * 100)
     
@@ -294,16 +283,69 @@ def render_progress_bar(card_states=None, is_running=False):
             status = "Detecting…"
     
     return f'''
-    <div style="background:#1a1a2e;border-radius:8px;height:28px;position:relative;
-                border:1px solid #333;margin-bottom:8px;overflow:hidden;">
-        <div style="width:{pct}%;height:100%;border-radius:7px;
+    <div style="background:#1a1a2e;border-radius:6px;height:22px;position:relative;
+                border:1px solid #333;margin-bottom:4px;overflow:hidden;">
+        <div style="width:{pct}%;height:100%;border-radius:5px;
                     background:linear-gradient(90deg,#2e7d32,#1565c0);
                     transition:width 0.3s ease;"></div>
         <span style="position:absolute;top:0;left:0;right:0;bottom:0;
                      display:flex;align-items:center;justify-content:center;
-                     color:#fff;font-size:13px;font-weight:bold;">
+                     color:#fff;font-size:12px;font-weight:bold;">
             {count} / 52 detected • {status}
         </span>
     </div>'''
 
 
+def render_card_sum(current_detections):
+    if not current_detections:
+        return '''
+        <div style="background:#12122a;border-radius:8px;padding:10px 14px;
+                    border:1px solid #252550;margin-top:6px;text-align:center;">
+            <span style="color:#555;font-size:13px;">Show cards to the camera to calculate</span>
+        </div>'''
+
+    # Parse cards and compute values
+    cards = []
+    for card_id in sorted(current_detections.keys()):
+        rank = card_id[:-1]  # e.g. "10" or "5"
+        suit_key = card_id[-1]  # e.g. "H"
+        value = CARD_VALUES.get(rank, 0)
+        info = SUITS.get(suit_key, {})
+        symbol = info.get("symbol", "")
+        color = info.get("color", "#888")
+        cards.append((rank, symbol, color, value))
+
+    total = sum(c[3] for c in cards)
+
+    # Build card chips
+    chips_html = ""
+    for i, (rank, symbol, color, value) in enumerate(cards):
+        if i > 0:
+            chips_html += '<span style="color:#555;font-size:18px;font-weight:300;margin:0 2px;">+</span>'
+        chips_html += (
+            f'<span style="display:inline-flex;align-items:center;gap:2px;'
+            f'background:#1a1a3e;border:1px solid {color};border-radius:5px;'
+            f'padding:3px 8px;font-size:13px;font-weight:600;color:{color};">'
+            f'{rank}<span style="font-size:11px;">{symbol}</span>'
+            f'</span>'
+        )
+
+    return f'''
+    <div style="background:#12122a;border-radius:8px;padding:10px 14px;
+                border:1px solid #252550;margin-top:6px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+            <span style="color:#c0c0d0;font-size:13px;font-weight:600;">Cards in Frame</span>
+            <span style="color:#888;font-size:11px;">{len(cards)} card{"s" if len(cards) != 1 else ""}</span>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:5px;
+                    margin-bottom:8px;">
+            {chips_html}
+        </div>
+        <div style="border-top:1px solid #252550;padding-top:8px;display:flex;
+                    align-items:center;justify-content:center;gap:8px;">
+            <span style="color:#888;font-size:12px;">Total</span>
+            <span style="font-size:22px;font-weight:700;color:#fff;letter-spacing:-0.025em;">
+                {total}
+            </span>
+        </div>
+    </div>'''

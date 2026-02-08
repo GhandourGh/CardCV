@@ -1,11 +1,3 @@
-# Real-time playing card detection using YOLOv8 + Streamlit
-#
-# Install dependencies:
-#   pip install -r requirements.txt
-#
-# Run:
-#   streamlit run app.py
-
 import base64
 import io
 import time
@@ -22,6 +14,7 @@ except ImportError:
 from config import SUIT_BGR
 from detection import compute_card_states, load_model
 from renderer import (
+    render_card_sum,
     render_info_panel,
     render_progress_bar,
     render_suit_icons,
@@ -29,9 +22,28 @@ from renderer import (
 )
 from styles import PAGE_CSS, SUIT_DIVIDER
 
+# Module-level camera variable — keeps cv2.VideoCapture out of
+# st.session_state so Streamlit's hot-reload doesn't segfault.
+_camera = {"cap": None}
+
+
+def _get_camera():
+    if _camera["cap"] is None or not _camera["cap"].isOpened():
+        cap = cv2.VideoCapture(0)
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+        cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        _camera["cap"] = cap
+    return _camera["cap"]
+
+
+def _release_camera():
+    if _camera["cap"] is not None:
+        _camera["cap"].release()
+        _camera["cap"] = None
+
 
 def frame_to_base64(frame_rgb):
-    """Convert RGB frame to base64 encoded JPEG string."""
     pil_image = Image.fromarray(frame_rgb)
     buffer = io.BytesIO()
     pil_image.save(buffer, format="JPEG", quality=85)
@@ -43,11 +55,11 @@ st.markdown(PAGE_CSS, unsafe_allow_html=True)
 
 # Modern header (shadcn/TailwindUI-inspired)
 header_html = """
-<div style="text-align:center;margin-bottom:24px;padding:24px 0;">
-    <h1 style="font-size:2rem;font-weight:700;color:hsl(210 40% 98%);margin:0 0 8px 0;letter-spacing:-0.025em;">
+<div style="text-align:center;margin-bottom:8px;padding:8px 0;">
+    <h1 style="font-size:1.5rem;font-weight:700;color:hsl(210 40% 98%);margin:0 0 4px 0;letter-spacing:-0.025em;">
         Playing Card Detection
     </h1>
-    <p style="font-size:0.875rem;color:hsl(217.9 10.6% 64.9%);margin:0;">
+    <p style="font-size:0.8rem;color:hsl(217.9 10.6% 64.9%);margin:0;">
         Real-time card recognition powered by <strong style="color:hsl(221.2 83.2% 53.3%);">YOLOv8</strong>
     </p>
 </div>
@@ -70,12 +82,15 @@ with right_col:
 with center_col:
     progress_placeholder = st.empty()
     frame_placeholder = st.empty()
+    sum_placeholder = st.empty()
 
     if "running" not in st.session_state:
         st.session_state.running = False
 
     def toggle():
         st.session_state.running = not st.session_state.running
+        if not st.session_state.running:
+            st.session_state.last_frame_html = None
 
     def set_icons():
         if st.session_state.card_style != "Icons":
@@ -100,7 +115,7 @@ with center_col:
                 update_side_panels(st.session_state.last_card_states)
 
     # Add spacing to prevent overlay
-    st.markdown("<div style='margin-top:24px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:8px;'></div>", unsafe_allow_html=True)
 
     # Modern toggle button group (shadcn-style visual, Streamlit buttons)
     icon_col, image_col = st.columns(2)
@@ -122,7 +137,7 @@ with center_col:
         )
 
     # Modern primary action button with spacing
-    st.markdown("<div style='margin-top:12px;'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-top:4px;'></div>", unsafe_allow_html=True)
     st.button(
         "⏹ Stop Detection" if st.session_state.running else "▶ Start Detection",
         on_click=toggle,
@@ -152,12 +167,9 @@ if "cached_images_html" not in st.session_state:
 
 
 def update_side_panels(card_states):
-    """Update side panels without refreshing the entire UI."""
     render = render_suit_images if st.session_state.card_style == "Images" else render_suit_icons
-    left_info = render_info_panel("left")
-    right_info = render_info_panel("right")
-    left_html = left_info + render("C", card_states) + SUIT_DIVIDER + render("S", card_states)
-    right_html = right_info + render("H", card_states) + SUIT_DIVIDER + render("D", card_states)
+    left_html = render("C", card_states) + SUIT_DIVIDER + render("S", card_states)
+    right_html = render("H", card_states) + SUIT_DIVIDER + render("D", card_states)
     
     # Cache the HTML for both modes to enable instant switching
     if st.session_state.card_style == "Icons":
@@ -186,27 +198,16 @@ if not st.session_state.get("switching_mode", False):
         if not st.session_state.running:
             progress_placeholder.markdown(render_progress_bar(st.session_state.last_card_states, is_running=False), unsafe_allow_html=True)
 
-# --- Initialize camera (always open) ---
-if "camera_initialized" not in st.session_state:
-    st.session_state.camera_initialized = False
-    st.session_state.cap = None
-
-# Initialize camera if not already done
-if st.session_state.cap is None:
-    st.session_state.cap = cv2.VideoCapture(0)
-    st.session_state.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
-    st.session_state.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
-    st.session_state.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-    st.session_state.camera_initialized = True
-
 # --- Main camera and detection loop ---
-if st.session_state.cap is not None and st.session_state.cap.isOpened():
-    if st.session_state.running:
+if st.session_state.running:
+    cap = _get_camera()
+
+    if cap is not None and cap.isOpened():
         # Detection mode - continuous loop
         model = load_model()
         
         while st.session_state.running:
-            ret, frame = st.session_state.cap.read()
+            ret, frame = cap.read()
             if not ret:
                 st.warning("Lost webcam feed.")
                 break
@@ -254,41 +255,45 @@ if st.session_state.cap is not None and st.session_state.cap.isOpened():
             if not st.session_state.get("switching_mode", False):
                 update_side_panels(card_states)
                 progress_placeholder.markdown(render_progress_bar(card_states, is_running=True), unsafe_allow_html=True)
+                sum_placeholder.markdown(render_card_sum(current_detections), unsafe_allow_html=True)
             else:
                 # Update panels but skip progress bar during mode switch
                 update_side_panels(card_states)
     else:
-        # Waiting mode - show loading animation only (no camera feed)
-        # Only update frame if we don't have a cached one (avoid refresh on mode switch)
-        if st.session_state.last_frame_html is None:
-            loading_html = f'''
-            <div class="camera-container">
-                <div class="loading-overlay" style="position:relative;background:transparent;">
-                    <div class="loading-spinner"></div>
-                    <div class="loading-text">Waiting to start detection...</div>
-                </div>
-            </div>
-            '''
-            frame_placeholder.markdown(loading_html, unsafe_allow_html=True)
-        # If we have a cached frame and are just switching modes, keep showing it
-        elif st.session_state.last_frame_html and st.session_state.running == False:
-            frame_placeholder.markdown(st.session_state.last_frame_html, unsafe_allow_html=True)
-        
-        # Update progress bar
-        progress_placeholder.markdown(render_progress_bar(is_running=False), unsafe_allow_html=True)
-        
-        # Always update side panels with last known card states (updates display mode)
-        if st.session_state.last_card_states:
-            update_side_panels(st.session_state.last_card_states)
-        else:
-            update_side_panels({})
+        st.error("Could not open webcam.")
 else:
-    st.error("Could not open webcam.")
+    # Stopped — release camera if still open
+    _release_camera()
+
+    # Show loading screen
+    loading_html = '''
+    <div class="camera-container">
+        <div class="loading-overlay" style="position:relative;background:transparent;">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">Waiting to start detection...</div>
+        </div>
+    </div>
+    '''
+    frame_placeholder.markdown(loading_html, unsafe_allow_html=True)
+    sum_placeholder.markdown(render_card_sum({}), unsafe_allow_html=True)
+    progress_placeholder.markdown(render_progress_bar(is_running=False), unsafe_allow_html=True)
+
+    # Update side panels so Icons/Images switching works while stopped
+    update_side_panels(st.session_state.get("last_card_states", {}) or {})
 
 # Footer
 st.markdown(
-    "<div style='text-align:center;margin-top:80px;padding:20px;color:#666;font-size:12px;'>"
+    "<div style='text-align:center;margin-top:20px;padding:12px;color:#666;font-size:12px;'>"
     "Done by <a href='https://github.com/GhandourGh'>GhandourGh</a> - Using YOLO8"
     "</div>",
     unsafe_allow_html=True,
 )
+
+# Info panels in collapsible expanders
+info_left_col, info_right_col = st.columns(2)
+with info_left_col:
+    with st.expander("About This Project"):
+        st.markdown(render_info_panel("left"), unsafe_allow_html=True)
+with info_right_col:
+    with st.expander("Detection Legend"):
+        st.markdown(render_info_panel("right"), unsafe_allow_html=True)
