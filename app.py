@@ -146,10 +146,10 @@ with center_col:
         key="start_stop_btn"
     )
     
-    # Status badge (if available)
-    if badge:
-        status_text = "Running" if st.session_state.running else "Idle"
-        badge(icon_name="⚡" if st.session_state.running else "⏸", badge_text=status_text)
+    # Status indicator
+    status_text = "Running" if st.session_state.running else "Idle"
+    icon = "⚡" if st.session_state.running else "⏸"
+    st.caption(f"{icon} {status_text}")
 
 # --- Session state ---
 if "card_history" not in st.session_state:
