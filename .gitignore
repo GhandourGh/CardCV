@@ -1,4 +1,29 @@
+# Python
 __pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Virtual environments
 .env
 .venv/
+env/
+venv/
+
+# macOS
+.DS_Store
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Model outputs
+*.avi
+*.mp4
+
+# Misc
+.claude/
